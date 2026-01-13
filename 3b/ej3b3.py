@@ -40,12 +40,11 @@ from functools import wraps
 from typing import Callable, Any
 import os
 
-# Ensuring the directory for logs exists
+# Directorio para logs
 log_directory: str = "data/output/logs"
-if not os.path.exists(log_directory):
-    os.makedirs(log_directory)
+os.makedirs(log_directory, exist_ok=True)
 
-# Configure logging
+# Configuración de logging global
 logging.basicConfig(
     filename=os.path.join(log_directory, "app.log"),
     level=logging.DEBUG,
@@ -55,37 +54,33 @@ logging.basicConfig(
 
 class DecoratorFactoryLogs:
     def log_decorator(self, message: str = "") -> Callable:
-        """
-        Decorator that logs the start and end of the execution of the function.
-        """
+        """Registra inicio y fin de ejecución de la función."""
 
         def decorator(func: Callable) -> Callable:
-            @wraps
+            @wraps(func)
             def wrapper(*args: Any, **kwargs: Any) -> Any:
                 logging.info(
                     f"{message} Starting: {func.__name__} with args: {args}, kwargs: {kwargs}"
                 )
-                result = func()
+                result = func(*args, **kwargs)
                 logging.info(f"{message} Finishing: {func.__name__}")
-                return
+                return result
 
             return wrapper
 
         return decorator
 
     def debug_log_decorator(self, message: str = "") -> Callable:
-        """
-        Decorator that logs detailed information useful for debugging.
-        """
+        """Registra información detallada para depuración."""
 
         def decorator(func: Callable) -> Callable:
             @wraps(func)
             def wrapper(*args: Any, **kwargs: Any) -> Any:
                 args_repr = [repr(a) for a in args]
                 kwargs_repr = [f"{k}={v!r}" for k, v in kwargs.items()]
-                signature =
+                signature = ", ".join(args_repr + kwargs_repr)
                 logging.debug(f"{message} Executing: {func.__name__}({signature})")
-                return 
+                return func(*args, **kwargs)
 
             return wrapper
 
@@ -96,26 +91,30 @@ class DecoratorFactoryLogs:
         message: str = "",
         filepath: str = os.path.join(log_directory, "custom_log.log"),
     ) -> Callable:
-        """
-        Decorator that logs information to a custom log file.
-        """
+        """Registra información en un archivo de log personalizado."""
 
         def decorator(func: Callable) -> Callable:
-            @wraps
+            @wraps(func)
             def wrapper(*args: Any, **kwargs: Any) -> Any:
+                # Logger específico
                 custom_logger = logging.getLogger(func.__name__)
+                custom_logger.setLevel(logging.INFO)
+
+                # Handler y formato
                 handler = logging.FileHandler(filepath)
-                formatter = logging.Formatter(
-                    "%(asctime)s - %(levelname)s - %(message)s"
-                )
-                handler.
-                custom_logger.
-                custom_logger.
+                formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+                handler.setFormatter(formatter)
+                custom_logger.addHandler(handler)
+
+                # Log
                 custom_logger.info(
                     f"{message} Executing: {func.__name__} with args: {args}, kwargs: {kwargs}"
                 )
-                result = 
-                custom_logger.removeHandler(handler)  # Clean up handler
+                result = func(*args, **kwargs)
+
+                # Remover handler para no duplicar logs en futuras llamadas
+                custom_logger.removeHandler(handler)
+                handler.close()
                 return result
 
             return wrapper
@@ -123,6 +122,9 @@ class DecoratorFactoryLogs:
         return decorator
 
 
+# -------------------------
+# Ejemplo de uso
+# -------------------------
 factory = DecoratorFactoryLogs()
 
 
@@ -143,9 +145,10 @@ def subtract(a: int, b: int) -> int:
 def multiply(a: int, b: int) -> int:
     return a * b
 
+
 # Para probar el código, descomenta las siguientes líneas
-# if __name__ == "__main__":
-#     print("Addition:", add(2, 3))
-#     print("Subtraction:", subtract(10, 5))
-#     print("Multiplication:", multiply(2, 4))
-#     print("Logs saved in:", log_directory)
+if __name__ == "__main__":
+     print("Addition:", add(2, 3))
+     print("Subtraction:", subtract(10, 5))
+     print("Multiplication:", multiply(2, 4))
+     print("Logs saved in:", log_directory)
